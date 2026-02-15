@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { v4 as uuid } from 'uuid';
-import { Note, GitHubProject, Idea, CronJob } from '@/types';
+import { Note, GitHubProject, Idea, CronJob, Task } from '@/types';
 
 const NOTES_KEY = 'hq-notes';
 const IDEAS_KEY = 'hq-ideas';
+const TASKS_KEY = 'hq-tasks';
 
-type Tab = 'projects' | 'ideas' | 'crons' | 'notes';
+type Tab = 'tasks' | 'projects' | 'ideas' | 'crons' | 'notes';
 
 // Icons as components
 const Icons = {
@@ -60,11 +61,26 @@ const Icons = {
       <path d="M21 21l-4.35-4.35" strokeLinecap="round"/>
     </svg>
   ),
+  check: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="12" cy="12" r="9"/>
+    </svg>
+  ),
+  checkSolid: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+      <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd"/>
+    </svg>
+  ),
 };
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('projects');
+  const [activeTab, setActiveTab] = useState<Tab>('tasks');
+  
+  // Tasks
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskInput, setTaskInput] = useState('');
   
   // Projects
   const [projects, setProjects] = useState<GitHubProject[]>([]);
@@ -90,8 +106,10 @@ export default function Home() {
     setMounted(true);
     
     // Load local storage
+    const storedTasks = localStorage.getItem(TASKS_KEY);
     const storedNotes = localStorage.getItem(NOTES_KEY);
     const storedIdeas = localStorage.getItem(IDEAS_KEY);
+    if (storedTasks) setTasks(JSON.parse(storedTasks));
     if (storedNotes) setNotes(JSON.parse(storedNotes));
     if (storedIdeas) setIdeas(JSON.parse(storedIdeas));
     
@@ -130,7 +148,11 @@ export default function Home() {
     }
   }, []);
 
-  // Persist notes & ideas
+  // Persist tasks, notes & ideas
+  useEffect(() => {
+    if (mounted) localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  }, [tasks, mounted]);
+  
   useEffect(() => {
     if (mounted) localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
   }, [notes, mounted]);
@@ -140,13 +162,15 @@ export default function Home() {
   }, [ideas, mounted]);
 
   // Voice input handler
-  const startVoice = useCallback((target: 'note' | 'idea') => {
+  const startVoice = useCallback((target: 'task' | 'note' | 'idea') => {
     if (!recognitionRef.current) return;
     
     setIsListening(true);
     recognitionRef.current.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
-      if (target === 'note') {
+      if (target === 'task') {
+        setTaskInput(transcript);
+      } else if (target === 'note') {
         setNoteInput(transcript);
       } else {
         setIdeaInput(transcript);
@@ -156,6 +180,29 @@ export default function Home() {
     recognitionRef.current.onerror = () => setIsListening(false);
     recognitionRef.current.onend = () => setIsListening(false);
     recognitionRef.current.start();
+  }, []);
+
+  const addTask = useCallback(() => {
+    if (!taskInput.trim()) return;
+    setTasks(prev => [{
+      id: uuid(),
+      title: taskInput.trim(),
+      completed: false,
+      createdAt: Date.now(),
+    }, ...prev]);
+    setTaskInput('');
+  }, [taskInput]);
+
+  const toggleTask = useCallback((id: string) => {
+    setTasks(prev => prev.map(t => 
+      t.id === id 
+        ? { ...t, completed: !t.completed, completedAt: !t.completed ? Date.now() : undefined }
+        : t
+    ));
+  }, []);
+
+  const deleteTask = useCallback((id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
   }, []);
 
   const addNote = useCallback(() => {
@@ -203,7 +250,11 @@ export default function Home() {
     );
   }
 
+  const pendingTasks = tasks.filter(t => !t.completed);
+  const completedTasks = tasks.filter(t => t.completed);
+  
   const tabs: { id: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
+    { id: 'tasks', label: 'Tasks', icon: Icons.check, count: pendingTasks.length },
     { id: 'projects', label: 'Projects', icon: Icons.folder, count: projects.length },
     { id: 'ideas', label: 'Ideas', icon: Icons.lightbulb, count: ideas.length },
     { id: 'crons', label: 'Crons', icon: Icons.clock, count: crons.filter(c => c.enabled).length },
@@ -256,6 +307,75 @@ export default function Home() {
 
         {/* Content */}
         <AnimatePresence mode="wait">
+          {/* TASKS TAB */}
+          {activeTab === 'tasks' && (
+            <motion.div
+              key="tasks"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* Input */}
+              <div className="relative mb-6">
+                <input
+                  type="text"
+                  placeholder="What needs to be done?"
+                  value={taskInput}
+                  onChange={(e) => setTaskInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addTask()}
+                  className="input-glass pr-24"
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                  <button
+                    onClick={() => startVoice('task')}
+                    className={`p-2.5 rounded-lg transition-all relative ${isListening ? 'text-[var(--accent)] voice-active' : 'text-[var(--text-muted)] hover:text-white hover:bg-white/10'}`}
+                  >
+                    {Icons.mic}
+                  </button>
+                  {taskInput && (
+                    <button
+                      onClick={addTask}
+                      className="px-3 py-1.5 rounded-lg bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent)]/80"
+                    >
+                      Add
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Pending tasks */}
+              {pendingTasks.length === 0 && completedTasks.length === 0 ? (
+                <EmptyState icon={Icons.check} text="No tasks" subtext="Add something to do" />
+              ) : (
+                <>
+                  {pendingTasks.length > 0 && (
+                    <div className="space-y-2 mb-6">
+                      {pendingTasks.map((task, i) => (
+                        <TaskCard key={task.id} task={task} index={i} onToggle={toggleTask} onDelete={deleteTask} />
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Completed tasks */}
+                  {completedTasks.length > 0 && (
+                    <>
+                      <div className="section-header">
+                        <span>Completed</span>
+                        <span className="text-[var(--text-faint)]">{completedTasks.length}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {completedTasks.slice(0, 5).map((task, i) => (
+                          <TaskCard key={task.id} task={task} index={i} onToggle={toggleTask} onDelete={deleteTask} />
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </motion.div>
+          )}
+
           {/* PROJECTS TAB */}
           {activeTab === 'projects' && (
             <motion.div
@@ -445,6 +565,44 @@ function EmptyState({ icon, text, subtext }: { icon: React.ReactNode; text: stri
       <p className="text-[var(--text-muted)]">{text}</p>
       {subtext && <p className="text-[var(--text-faint)] text-sm">{subtext}</p>}
     </div>
+  );
+}
+
+function TaskCard({ task, index, onToggle, onDelete }: { task: Task; index: number; onToggle: (id: string) => void; onDelete: (id: string) => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ delay: index * 0.03 }}
+      className="glass-card p-4 group"
+    >
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => onToggle(task.id)}
+          className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+            task.completed 
+              ? 'bg-[var(--green)] border-[var(--green)] text-white' 
+              : 'border-[var(--text-faint)] hover:border-[var(--green)]'
+          }`}
+        >
+          {task.completed && (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="w-3 h-3">
+              <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </button>
+        <span className={`flex-1 ${task.completed ? 'text-[var(--text-muted)] line-through' : 'text-[var(--text-primary)]'}`}>
+          {task.title}
+        </span>
+        <button
+          onClick={() => onDelete(task.id)}
+          className="p-2 rounded-lg text-[var(--text-faint)] hover:text-[var(--red)] hover:bg-[var(--red-soft)] opacity-0 group-hover:opacity-100 transition-all"
+        >
+          {Icons.x}
+        </button>
+      </div>
+    </motion.div>
   );
 }
 

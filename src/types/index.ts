@@ -42,6 +42,14 @@ export interface Idea {
   researched?: boolean;
 }
 
+export interface Task {
+  id: string;
+  title: string;
+  completed: boolean;
+  createdAt: number;
+  completedAt?: number;
+}
+
 export interface CronJob {
   id: string;
   name: string;
