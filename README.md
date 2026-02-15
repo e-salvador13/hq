@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HQ
+
+Personal command center. Tasks, projects, ideas, crons — all in one place.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8)
+
+## Features
+
+### ✅ Tasks
+- Quick add with text or voice input
+- Tap to complete, swipe to delete
+- Completed tasks tracked separately
+- Persisted to localStorage
+
+### 📁 Projects
+- Live sync with GitHub API
+- Shows recently active repos first
+- Displays language, live URL badge, last updated
+- Links directly to repo or deployed site
+
+### 💡 Ideas
+- Capture project ideas to research later
+- Voice input supported
+- Research workflow (coming soon)
+
+### ⏰ Crons
+- View scheduled jobs from Clawdbot
+- Shows next run time, enabled status
+- Fallback display when not connected locally
+
+### 📝 Notes
+- Quick capture for thoughts
+- Auto-tagging (todo, bug, idea, learn)
+- Voice input supported
+
+## Stack
+
+- **Next.js 16** with App Router
+- **TypeScript**
+- **Tailwind CSS 4**
+- **Framer Motion** for animations
+- **Web Speech API** for voice input
+
+## Design
+
+Inspired by Perplexity and Apple Health — dark, minimal, glassy cards with subtle depth.
+
+- Pure black background
+- Glass morphism cards
+- Single accent color
+- Elegant typography
+- Smooth micro-animations
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install
+npm install
+
+# Dev
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deployment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Deployed on Vercel: [hq-nu.vercel.app](https://hq-nu.vercel.app)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Local Features
 
-## Learn More
+When running locally with Clawdbot, the Crons tab shows live job status. On Vercel, it displays sample data.
 
-To learn more about Next.js, take a look at the following resources:
+## Storage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+All data (tasks, notes, ideas) persists to browser localStorage. No backend required.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with [Clawdbot](https://github.com/clawdbot/clawdbot)
